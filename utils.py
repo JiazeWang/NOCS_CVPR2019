@@ -29,7 +29,7 @@ sys.path.append('./cocoapi/PythonAPI')
 from pycocotools.cocoeval import COCOeval
 from pycocotools import mask as maskUtils
 import matplotlib.pyplot as plt
-matplotlib.use('agg')
+plt.switch_backend('Agg')
 
 
 ############################################################
