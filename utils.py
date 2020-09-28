@@ -29,7 +29,7 @@ sys.path.append('./cocoapi/PythonAPI')
 from pycocotools.cocoeval import COCOeval
 from pycocotools import mask as maskUtils
 import matplotlib.pyplot as plt
-
+matplotlib.use('agg')
 
 
 ############################################################
@@ -122,11 +122,11 @@ def compute_mean_l1_coord_diff(mask1, mask2, coord1, coord2, synset, cls_id):
     '''Computes IoU overlaps between two sets of masks.
     mask1, mask2: [Height, Width]
     coord1, coord2: [Height, Width, 3]
-    
+
     '''
     # flatten masks
     num_pixels = mask1.shape[0] * mask1.shape[1]
-    
+
     mask1 = np.reshape(mask1 > .5, (-1)).astype(np.float32)
     mask2 = np.reshape(mask2 > .5, (-1)).astype(np.float32)
     coord1 = np.reshape(coord1, (-1, 3)).astype(np.float32)
@@ -135,10 +135,10 @@ def compute_mean_l1_coord_diff(mask1, mask2, coord1, coord2, synset, cls_id):
     # intersections and union
     intersections = np.logical_and(mask1, mask2)
     num_pixel_intersection = len(np.where(intersections)[0])
-    
+
     pts1 = coord1[intersections, :].transpose() - 0.5
     pts2 = coord2[intersections, :].transpose() - 0.5
-    
+
     def rotation_y_matrix(theta):
         rotation_matrix =  \
                 np.array([ np.cos(theta), 0,  np.sin(theta),
@@ -146,25 +146,25 @@ def compute_mean_l1_coord_diff(mask1, mask2, coord1, coord2, synset, cls_id):
                           -np.sin(theta), 0,  np.cos(theta)])
         rotation_matrix = np.reshape(rotation_matrix, (3, 3))
         return rotation_matrix
-      
+
     if synset[cls_id] in ['bottle', 'bowl', 'can']:
         M = 20
         pts1_symmetry = np.zeros(pts1.shape+(M,))  ## shape: (3, N, 6)
         for i in range(M):
             rotated_pts1 = rotation_y_matrix(float(i)*np.float32(2*math.pi/M)) @ pts1
             pts1_symmetry[:, :, i] = rotated_pts1
-        
+
         pts2_reshape = pts2.reshape([3, -1, 1])
         mean_dists = np.mean(np.linalg.norm(pts1_symmetry - pts2_reshape, axis=0), axis=0)
         mean_dist = np.amin(mean_dists)
     elif synset[cls_id] in ['phone']:
         pts1_symmetry = np.zeros(pts1.shape+(2,))
-        
+
         for i in range(2):
             rotated_pts1 = rotation_y_matrix(float(i)*np.float32(2*math.pi/2)) @ pts1
             #print(rotated_pts1)
             pts1_symmetry[:, :, i] = rotated_pts1
-        
+
         pts2_reshape = pts2.reshape([3, -1, 1])
         mean_dists = np.mean(np.linalg.norm(pts1_symmetry - pts2_reshape, axis=0), axis=0)
         mean_dist = np.amin(mean_dists)
@@ -174,10 +174,10 @@ def compute_mean_l1_coord_diff(mask1, mask2, coord1, coord2, synset, cls_id):
         dist = np.linalg.norm(diff, axis=0)
         assert dist.shape[0] == num_pixel_intersection
         mean_dist = np.mean(dist)
-    
+
     mean_l1_coord_diff = mean_dist
     #print(mean_l1_coord_diff, pts1.shape[0])
-    
+
     return mean_l1_coord_diff
 
 
@@ -222,7 +222,7 @@ def compute_3d_iou(bbox_3d_1, bbox_3d_2, handle_visibility, class_name_1, class_
         theta = 2*math.pi/n
 
         y_rotation_matrix = np.array([[np.cos(theta), 0, np.sin(theta)],
-                                      [0, 1, 0], 
+                                      [0, 1, 0],
                                       [-np.sin(theta), 0, np.cos(theta)]])
 
         max_iou = 0
@@ -273,14 +273,14 @@ def compute_3d_iou_new(RT_1, RT_2, scales_1, scales_2, handle_visibility, class_
     symmetry_flag = False
     if (class_name_1 in ['bottle', 'bowl', 'can'] and class_name_1 == class_name_2) or (class_name_1 == 'mug' and class_name_1 == class_name_2 and handle_visibility==0):
         print('*'*10)
-    
+
         noc_cube_1 = get_3d_bbox(scales_1, 0)
         noc_cube_2 = get_3d_bbox(scales_2, 0)
         bbox_3d_2 = transform_coordinates_3d(noc_cube_2, RT_2)
 
         def y_rotation_matrix(theta):
             return np.array([[np.cos(theta), 0, np.sin(theta), 0],
-                             [0, 1, 0 , 0], 
+                             [0, 1, 0 , 0],
                              [-np.sin(theta), 0, np.cos(theta), 0],
                              [0, 0, 0 , 1]])
 
@@ -288,14 +288,14 @@ def compute_3d_iou_new(RT_1, RT_2, scales_1, scales_2, handle_visibility, class_
         max_iou = 0
         for i in range(n):
             rotated_RT_1 = RT_1@y_rotation_matrix(2*math.pi*i/float(n))
-            max_iou = max(max_iou, 
+            max_iou = max(max_iou,
                           asymmetric_3d_iou(rotated_RT_1, RT_2, scales_1, scales_2))
     else:
         max_iou = asymmetric_3d_iou(RT_1, RT_2, scales_1, scales_2)
-    
-    
+
+
     return max_iou
-        
+
 
 
 
@@ -353,7 +353,7 @@ def compute_RT_degree_cm_symmetry(RT_1, RT_2, class_id, handle_visibility, synse
                     'laptop',  # 8
                     'mug'  # 9
                     ]
-    
+
     synset_names = ['BG',  # 0
                     'bottle',  # 1
                     'bowl',  # 2
@@ -453,22 +453,22 @@ def compute_RT_projection_2d_symmetry(RT_1, RT_2, class_id, handle_visibility, m
         assert np.abs(np.linalg.det(R2) - 1) < 0.01
     except AssertionError:
         print(np.linalg.det(R1), np.linalg.det(R2))
-    
+
     # check the vertices are in meter unit
     vertices = np.copy(mesh_vertices)/1000
-    assert np.amax(vertices) < 0.5, np.amax(vertices) 
+    assert np.amax(vertices) < 0.5, np.amax(vertices)
     assert np.amax(vertices) > 0, np.amax(vertices)
     assert np.amin(vertices) < 0, np.amin(vertices)
     assert np.amin(vertices) > -0.5, np.amin(vertices)
- 
+
     assert vertices.shape[0] == 3
     num_vertices = vertices.shape[1]
-    
+
     coords_3d_1 = transform_coordinates_3d(vertices, RT_1)
     projected_1 = calculate_2d_projections(coords_3d_1, intrinsics)
     coords_3d_2 = transform_coordinates_3d(vertices, RT_2)
     projected_2 = calculate_2d_projections(coords_3d_2, intrinsics)
-    
+
     # calculate reprojection 2d error
     dists = np.linalg.norm(projected_1 - projected_2, axis=1)
     assert len(dists) == num_vertices
@@ -478,11 +478,11 @@ def compute_RT_projection_2d_symmetry(RT_1, RT_2, class_id, handle_visibility, m
     ## take care of symmetry categories
 
     # freely rotate around y axis
-    if (synset_names[class_id] in ['bottle', 'can', 'bowl']) or (synset_names[class_id] == 'mug' and handle_visibility==0):  
-        
+    if (synset_names[class_id] in ['bottle', 'can', 'bowl']) or (synset_names[class_id] == 'mug' and handle_visibility==0):
+
         def y_rotation_matrix(theta):
             return np.array([[np.cos(theta), 0, np.sin(theta)],
-                             [0, 1, 0], 
+                             [0, 1, 0],
                              [-np.sin(theta), 0, np.cos(theta)]])
         for i in range(1, num_rotation):
             theta = 2*math.pi*i/float(num_rotation)
@@ -496,13 +496,13 @@ def compute_RT_projection_2d_symmetry(RT_1, RT_2, class_id, handle_visibility, m
     # rotate 180 around y axis
     elif synset_names[class_id] in ['phone']:
         y_180_RT = np.diag([-1.0, 1.0, -1.0])
-        
+
         coords_3d_2 = transform_coordinates_3d(y_180_RT@vertices, RT_2)
         projected_2 = calculate_2d_projections(coords_3d_2, intrinsics)
         dists = np.linalg.norm(projected_1 - projected_2, axis=1)
         assert len(dists) == num_vertices
         min_mean_dist = min(min_mean_dist, np.mean(dists))
-        
+
     # rotate 180 around z axis
     elif synset_names[class_id] in ['eggbox', 'glue']:
         z_180_RT = np.diag([-1.0, -1.0, 1.0])
@@ -512,10 +512,10 @@ def compute_RT_projection_2d_symmetry(RT_1, RT_2, class_id, handle_visibility, m
         assert len(dists) == num_vertices
         min_mean_dist = min(min_mean_dist, np.mean(dists))
 
-    else: ## normal asymmetric objects        
+    else: ## normal asymmetric objects
         min_mean_dist = min_mean_dist
 
-    
+
     return min_mean_dist
 
 
@@ -634,10 +634,10 @@ def box_refinement(box, gt_box):
 
 def get_3d_bbox(scale, shift = 0):
     """
-    Input: 
+    Input:
         scale: [3] or scalar
         shift: [3] or scalar
-    Return 
+    Return
         bbox_3d: [3, N]
 
     """
@@ -667,10 +667,10 @@ def get_3d_bbox(scale, shift = 0):
 
 def transform_coordinates_3d(coordinates, RT):
     """
-    Input: 
+    Input:
         coordinates: [3, N]
         RT: [4, 4]
-    Return 
+    Return
         new_coordinates: [3, N]
 
     """
@@ -683,10 +683,10 @@ def transform_coordinates_3d(coordinates, RT):
 
 def calculate_2d_projections(coordinates_3d, intrinsics):
     """
-    Input: 
+    Input:
         coordinates: [3, N]
         intrinsics: [3, 3]
-    Return 
+    Return
         projected_coordinates: [N, 2]
     """
     projected_coordinates = intrinsics @ coordinates_3d
@@ -696,7 +696,7 @@ def calculate_2d_projections(coordinates_3d, intrinsics):
 
     return projected_coordinates
 
- 
+
 
 ############################################################
 #  IMAGE AUGMENTATION
@@ -859,7 +859,7 @@ def rotate_and_crop_images(image, masks, coords, rotate_degree):
 
     image_rotated = rotate_image(image, new_w, new_h, affine_mat, cv2.INTER_LINEAR)
     mask_rotated = rotate_image(masks, new_w, new_h, affine_mat, cv2.INTER_NEAREST)
-    
+
     rect = largest_rotated_rect(
             image_width,
             image_height,
@@ -1400,7 +1400,7 @@ def compute_matches(gt_boxes, gt_class_ids, gt_masks,
 
     # Sort predictions by score from high to low
     indices = np.argsort(pred_scores)[::-1]
-    
+
     pred_boxes = pred_boxes[indices]
     pred_class_ids = pred_class_ids[indices]
     pred_scores = pred_scores[indices]
@@ -1413,8 +1413,8 @@ def compute_matches(gt_boxes, gt_class_ids, gt_masks,
     match_count = 0
     pred_match = -1 * np.ones([pred_boxes.shape[0]])
     gt_match = -1 * np.ones([gt_boxes.shape[0]])
-    
-    
+
+
     for i in range(len(pred_boxes)):
         # Find best matching ground truth box
         # 1. Sort matches by score
@@ -1458,21 +1458,21 @@ def compute_3d_matches(gt_class_ids, gt_RTs, gt_scales, gt_handle_visibility, sy
     num_pred = len(pred_class_ids)
     num_gt = len(gt_class_ids)
     indices = np.zeros(0)
-    
+
     if num_pred:
         pred_boxes = trim_zeros(pred_boxes).copy()
         pred_scores = pred_scores[:pred_boxes.shape[0]].copy()
 
         # Sort predictions by score from high to low
         indices = np.argsort(pred_scores)[::-1]
-        
+
         pred_boxes = pred_boxes[indices].copy()
         pred_class_ids = pred_class_ids[indices].copy()
         pred_scores = pred_scores[indices].copy()
         pred_scales = pred_scales[indices].copy()
         pred_RTs = pred_RTs[indices].copy()
 
-        
+
     # pred_3d_bboxs = []
     # for i in range(num_pred):
     #     noc_cube = get_3d_bbox(pred_scales[i, :], 0)
@@ -1492,7 +1492,7 @@ def compute_3d_matches(gt_class_ids, gt_RTs, gt_scales, gt_handle_visibility, sy
     overlaps = np.zeros((num_pred, num_gt), dtype=np.float32)
     for i in range(num_pred):
         for j in range(num_gt):
-            #overlaps[i, j] = compute_3d_iou(pred_3d_bboxs[i], gt_3d_bboxs[j], gt_handle_visibility[j], 
+            #overlaps[i, j] = compute_3d_iou(pred_3d_bboxs[i], gt_3d_bboxs[j], gt_handle_visibility[j],
             #    synset_names[pred_class_ids[i]], synset_names[gt_class_ids[j]])
             overlaps[i, j] = compute_3d_iou_new(pred_RTs[i], gt_RTs[j], pred_scales[i, :], gt_scales[j], gt_handle_visibility[j], synset_names[pred_class_ids[i]], synset_names[gt_class_ids[j]])
 
@@ -1562,7 +1562,7 @@ def compute_ap_from_matches_scores(pred_match, pred_scores, gt_match):
 
 
 def compute_RT_overlaps(gt_class_ids, gt_RTs, gt_handle_visibility,
-                        pred_class_ids, pred_RTs, 
+                        pred_class_ids, pred_RTs,
                         synset_names):
     """Finds overlaps between prediction and ground truth instances.
     Returns:
@@ -1578,17 +1578,17 @@ def compute_RT_overlaps(gt_class_ids, gt_RTs, gt_handle_visibility,
 
     for i in range(num_pred):
         for j in range(num_gt):
-            overlaps[i, j, :] = compute_RT_degree_cm_symmetry(pred_RTs[i], 
-                                                              gt_RTs[j], 
-                                                              gt_class_ids[j], 
+            overlaps[i, j, :] = compute_RT_degree_cm_symmetry(pred_RTs[i],
+                                                              gt_RTs[j],
+                                                              gt_class_ids[j],
                                                               gt_handle_visibility[j],
                                                               synset_names)
-            
+
     return overlaps
 
 
 def compute_RT_projection_2d_overlaps(gt_class_ids, gt_RTs, gt_handle_visibility,
-                                      pred_class_ids, pred_RTs, 
+                                      pred_class_ids, pred_RTs,
                                       meshes, intrinsics, synset_names):
     """Finds overlaps between prediction and ground truth instances.
     Returns:
@@ -1604,14 +1604,14 @@ def compute_RT_projection_2d_overlaps(gt_class_ids, gt_RTs, gt_handle_visibility
 
     for i in range(num_pred):
         for j in range(num_gt):
-            overlaps[i, j] = compute_RT_projection_2d_symmetry(pred_RTs[i], 
-                                                               gt_RTs[j], 
-                                                               gt_class_ids[j], 
+            overlaps[i, j] = compute_RT_projection_2d_symmetry(pred_RTs[i],
+                                                               gt_RTs[j],
+                                                               gt_class_ids[j],
                                                                gt_handle_visibility[j],
                                                                meshes[gt_class_ids[j]],
                                                                intrinsics,
                                                                synset_names)
-            
+
     return overlaps
 
 
@@ -1630,9 +1630,9 @@ def compute_match_from_projection_2d_dist(overlaps, pred_class_ids, gt_class_ids
 
     assert num_pred == overlaps.shape[0]
     assert num_gt == overlaps.shape[1]
-    
 
-                 
+
+
     for p, projection_thres in enumerate(projection_thres_list):
         for i in range(num_pred):
             # Find best matching ground truth box
@@ -1677,9 +1677,9 @@ def compute_match_from_degree_cm(overlaps, pred_class_ids, gt_class_ids, degree_
     assert num_pred == overlaps.shape[0]
     assert num_gt == overlaps.shape[1]
     assert overlaps.shape[2] == 2
-    
 
-    for d, degree_thres in enumerate(degree_thres_list):                
+
+    for d, degree_thres in enumerate(degree_thres_list):
         for s, shift_thres in enumerate(shift_thres_list):
             for i in range(num_pred):
                 # Find best matching ground truth box
@@ -1716,7 +1716,7 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
     recalls: List of recall values at different class score thresholds.
     overlaps: [pred_boxes, gt_boxes] IoU overlaps.
     """
-    
+
     num_classes = len(synset_names)
     degree_thres_list = list(degree_thresholds) + [360]
     num_degree_thres = len(degree_thres_list)
@@ -1734,7 +1734,7 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
     iou_pred_matches_all = [np.zeros((num_iou_thres, 0)) for _ in range(num_classes)]
     iou_pred_scores_all  = [np.zeros((num_iou_thres, 0)) for _ in range(num_classes)]
     iou_gt_matches_all   = [np.zeros((num_iou_thres, 0)) for _ in range(num_classes)]
-    
+
     pose_aps = np.zeros((num_classes + 1, num_degree_thres, num_shift_thres))
     pose_pred_matches_all = [np.zeros((num_degree_thres, num_shift_thres, 0)) for _  in range(num_classes)]
     pose_gt_matches_all  = [np.zeros((num_degree_thres, num_shift_thres, 0)) for _  in range(num_classes)]
@@ -1748,7 +1748,7 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
         gt_RTs = np.array(result['gt_RTs'])
         gt_scales = np.array(result['gt_scales'])
         gt_handle_visibility = result['gt_handle_visibility']
-    
+
         pred_bboxes = np.array(result['pred_bboxes'])
         pred_class_ids = result['pred_class_ids']
         pred_scales = result['pred_scales']
@@ -1827,7 +1827,7 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
 
                 iou_thres_pred_match = iou_cls_pred_match[thres_ind, :]
 
-                
+
                 cls_pred_class_ids = cls_pred_class_ids[iou_thres_pred_match > -1] if len(iou_thres_pred_match) > 0 else np.zeros(0)
                 cls_pred_RTs = cls_pred_RTs[iou_thres_pred_match > -1] if len(iou_thres_pred_match) > 0 else np.zeros((0, 4, 4))
                 cls_pred_scores = cls_pred_scores[iou_thres_pred_match > -1] if len(iou_thres_pred_match) > 0 else np.zeros(0)
@@ -1841,27 +1841,27 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
 
 
 
-            RT_overlaps = compute_RT_overlaps(cls_gt_class_ids, cls_gt_RTs, cls_gt_handle_visibility, 
+            RT_overlaps = compute_RT_overlaps(cls_gt_class_ids, cls_gt_RTs, cls_gt_handle_visibility,
                                               cls_pred_class_ids, cls_pred_RTs,
                                               synset_names)
 
 
-            pose_cls_gt_match, pose_cls_pred_match = compute_match_from_degree_cm(RT_overlaps, 
-                                                                                  cls_pred_class_ids, 
-                                                                                  cls_gt_class_ids, 
-                                                                                  degree_thres_list, 
+            pose_cls_gt_match, pose_cls_pred_match = compute_match_from_degree_cm(RT_overlaps,
+                                                                                  cls_pred_class_ids,
+                                                                                  cls_gt_class_ids,
+                                                                                  degree_thres_list,
                                                                                   shift_thres_list)
-            
+
 
             pose_pred_matches_all[cls_id] = np.concatenate((pose_pred_matches_all[cls_id], pose_cls_pred_match), axis=-1)
-            
+
             cls_pred_scores_tile = np.tile(cls_pred_scores, (num_degree_thres, num_shift_thres, 1))
             pose_pred_scores_all[cls_id]  = np.concatenate((pose_pred_scores_all[cls_id], cls_pred_scores_tile), axis=-1)
             assert pose_pred_scores_all[cls_id].shape[2] == pose_pred_matches_all[cls_id].shape[2], '{} vs. {}'.format(pose_pred_scores_all[cls_id].shape, pose_pred_matches_all[cls_id].shape)
             pose_gt_matches_all[cls_id] = np.concatenate((pose_gt_matches_all[cls_id], pose_cls_gt_match), axis=-1)
 
-    
-    
+
+
     # draw iou 3d AP vs. iou thresholds
     fig_iou = plt.figure()
     ax_iou = plt.subplot(111)
@@ -1879,9 +1879,9 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
         for s, iou_thres in enumerate(iou_thres_list):
             iou_3d_aps[cls_id, s] = compute_ap_from_matches_scores(iou_pred_matches_all[cls_id][s, :],
                                                                    iou_pred_scores_all[cls_id][s, :],
-                                                                   iou_gt_matches_all[cls_id][s, :])    
+                                                                   iou_gt_matches_all[cls_id][s, :])
         ax_iou.plot(iou_thres_list, iou_3d_aps[cls_id, :], label=class_name)
-        
+
     iou_3d_aps[-1, :] = np.mean(iou_3d_aps[1:-1, :], axis=0)
     ax_iou.plot(iou_thres_list, iou_3d_aps[-1, :], label='mean')
     ax_iou.legend()
@@ -1891,7 +1891,7 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
     iou_dict['aps'] = iou_3d_aps
     with open(iou_dict_pkl_path, 'wb') as f:
         cPickle.dump(iou_dict, f)
-    
+
 
     # draw pose AP vs. thresholds
     if use_matches_for_pose:
@@ -1900,13 +1900,13 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
         prefix='Pose_Detection_'
 
 
-    pose_dict_pkl_path = os.path.join(log_dir, prefix+'AP_{}-{}degree_{}-{}cm.pkl'.format(degree_thres_list[0], degree_thres_list[-2], 
+    pose_dict_pkl_path = os.path.join(log_dir, prefix+'AP_{}-{}degree_{}-{}cm.pkl'.format(degree_thres_list[0], degree_thres_list[-2],
                                                                                           shift_thres_list[0], shift_thres_list[-2]))
     pose_dict = {}
     pose_dict['degree_thres'] = degree_thres_list
     pose_dict['shift_thres_list'] = shift_thres_list
 
-    for i, degree_thres in enumerate(degree_thres_list):                
+    for i, degree_thres in enumerate(degree_thres_list):
         for j, shift_thres in enumerate(shift_thres_list):
             # print(i, j)
             for cls_id in range(1, num_classes):
@@ -1914,12 +1914,12 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
                 cls_pose_gt_matches_all = pose_gt_matches_all[cls_id][i, j, :]
                 cls_pose_pred_scores_all = pose_pred_scores_all[cls_id][i, j, :]
 
-                pose_aps[cls_id, i, j] = compute_ap_from_matches_scores(cls_pose_pred_matches_all, 
-                                                                        cls_pose_pred_scores_all, 
+                pose_aps[cls_id, i, j] = compute_ap_from_matches_scores(cls_pose_pred_matches_all,
+                                                                        cls_pose_pred_scores_all,
                                                                         cls_pose_gt_matches_all)
 
             pose_aps[-1, i, j] = np.mean(pose_aps[1:-1, i, j])
-    
+
     pose_dict['aps'] = pose_aps
     with open(pose_dict_pkl_path, 'wb') as f:
         cPickle.dump(pose_dict, f)
@@ -1929,7 +1929,7 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
         class_name = synset_names[cls_id]
         print(class_name)
         # print(np.amin(aps[i, :, :]), np.amax(aps[i, :, :]))
-    
+
         #ap_image = cv2.resize(pose_aps[cls_id, :, :]*255, (320, 320), interpolation = cv2.INTER_LINEAR)
         fig_iou = plt.figure()
         ax_iou = plt.subplot(111)
@@ -1939,15 +1939,15 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
         plt.xlim((shift_thres_list[0], shift_thres_list[-2]))
         plt.imshow(pose_aps[cls_id, :-1, :-1], cmap='jet', interpolation='bilinear')
 
-        output_path = os.path.join(log_dir, prefix+'AP_{}_{}-{}degree_{}-{}cm.png'.format(class_name, 
-                                                                                   degree_thres_list[0], degree_thres_list[-2], 
+        output_path = os.path.join(log_dir, prefix+'AP_{}_{}-{}degree_{}-{}cm.png'.format(class_name,
+                                                                                   degree_thres_list[0], degree_thres_list[-2],
                                                                                    shift_thres_list[0], shift_thres_list[-2]))
         plt.colorbar()
         plt.savefig(output_path)
-        plt.close(fig_iou)        
-    
-    #ap_mean_image = cv2.resize(pose_aps[-1, :, :]*255, (320, 320), interpolation = cv2.INTER_LINEAR) 
-    
+        plt.close(fig_iou)
+
+    #ap_mean_image = cv2.resize(pose_aps[-1, :, :]*255, (320, 320), interpolation = cv2.INTER_LINEAR)
+
     fig_pose = plt.figure()
     ax_pose = plt.subplot(111)
     plt.ylabel('Rotation thresholds/degree')
@@ -1955,13 +1955,13 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
     plt.xlabel('translation/cm')
     plt.xlim((shift_thres_list[0], shift_thres_list[-2]))
     plt.imshow(pose_aps[-1, :-1, :-1], cmap='jet', interpolation='bilinear')
-    output_path = os.path.join(log_dir, prefix+'mAP_{}-{}degree_{}-{}cm.png'.format(degree_thres_list[0], degree_thres_list[-2], 
+    output_path = os.path.join(log_dir, prefix+'mAP_{}-{}degree_{}-{}cm.png'.format(degree_thres_list[0], degree_thres_list[-2],
                                                                              shift_thres_list[0], shift_thres_list[-2]))
     plt.colorbar()
     plt.savefig(output_path)
     plt.close(fig_pose)
 
-    
+
     fig_rot = plt.figure()
     ax_rot = plt.subplot(111)
     plt.ylabel('AP')
@@ -1971,7 +1971,7 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
         class_name = synset_names[cls_id]
         print(class_name)
         ax_rot.plot(shift_thres_list[:-1], pose_aps[cls_id, -1, :-1], label=class_name)
-    
+
     ax_rot.plot(shift_thres_list[:-1], pose_aps[-1, -1, :-1], label='mean')
     output_path = os.path.join(log_dir, prefix+'mAP_{}-{}cm.png'.format(shift_thres_list[0], shift_thres_list[-2]))
     ax_rot.legend()
@@ -1991,7 +1991,7 @@ def compute_degree_cm_mAP(final_results, synset_names, log_dir, degree_threshold
 
     ax_trans.plot(degree_thres_list[:-1], pose_aps[-1, :-1, -1], label='mean')
     output_path = os.path.join(log_dir, prefix+'mAP_{}-{}degree.png'.format(degree_thres_list[0], degree_thres_list[-2]))
-    
+
     ax_trans.legend()
     fig_trans.savefig(output_path)
     plt.close(fig_trans)
@@ -2018,9 +2018,9 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
     recalls: List of recall values at different class score thresholds.
     overlaps: [pred_boxes, gt_boxes] IoU overlaps.
     """
-    
+
     num_classes = len(synset_names)
-    
+
     iou_thres_list = list(iou_3d_thresholds)
     num_iou_thres = len(iou_thres_list)
 
@@ -2034,8 +2034,8 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
     iou_pred_matches_all = [np.zeros((num_iou_thres, 0)) for _ in range(num_classes)]
     iou_pred_scores_all  = [np.zeros((num_iou_thres, 0)) for _ in range(num_classes)]
     iou_gt_matches_all   = [np.zeros((num_iou_thres, 0)) for _ in range(num_classes)]
-    
-    
+
+
     projection_2d_aps = np.zeros((num_classes + 1, num_projection_thres))
     projection_pred_matches_all = [np.zeros((num_projection_thres, 0)) for _ in range(num_classes)]
     projection_pred_scores_all  = [np.zeros((num_projection_thres, 0)) for _ in range(num_classes)]
@@ -2050,7 +2050,7 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
         gt_RTs = np.array(result['gt_RTs'])
         gt_scales = np.array(result['gt_scales'])
         gt_handle_visibility = result['gt_handle_visibility']
-    
+
         pred_bboxes = np.array(result['pred_bboxes'])
         pred_class_ids = result['pred_class_ids']
         pred_scales = result['pred_scales']
@@ -2103,7 +2103,7 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
 
                 iou_thres_pred_match = iou_cls_pred_match[thres_ind, :]
 
-                
+
                 cls_pred_class_ids = cls_pred_class_ids[iou_thres_pred_match > -1] if len(iou_thres_pred_match) > 0 else np.zeros(0)
                 cls_pred_RTs = cls_pred_RTs[iou_thres_pred_match > -1] if len(iou_thres_pred_match) > 0 else np.zeros((0, 4, 4))
                 cls_pred_scores = cls_pred_scores[iou_thres_pred_match > -1] if len(iou_thres_pred_match) > 0 else np.zeros(0)
@@ -2122,21 +2122,21 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
                                                                           meshes, intrinsics, synset_names)
 
 
-            projection_cls_gt_match, projection_cls_pred_match = compute_match_from_projection_2d_dist(RT_projection_2d_overlaps, 
-                                                                                                       cls_pred_class_ids, 
-                                                                                                       cls_gt_class_ids, 
+            projection_cls_gt_match, projection_cls_pred_match = compute_match_from_projection_2d_dist(RT_projection_2d_overlaps,
+                                                                                                       cls_pred_class_ids,
+                                                                                                       cls_gt_class_ids,
                                                                                                        projection_thres_list)
-                            
+
 
             projection_pred_matches_all[cls_id] = np.concatenate((projection_pred_matches_all[cls_id], projection_cls_pred_match), axis=-1)
-            
+
             cls_pred_scores_tile = np.tile(cls_pred_scores, (num_projection_thres, 1))
             projection_pred_scores_all[cls_id]  = np.concatenate((projection_pred_scores_all[cls_id], cls_pred_scores_tile), axis=-1)
             assert projection_pred_scores_all[cls_id].shape[1] == projection_pred_matches_all[cls_id].shape[1], '{} vs. {}'.format(projection_pred_scores_all[cls_id].shape, projection_pred_matches_all[cls_id].shape)
             projection_gt_matches_all[cls_id] = np.concatenate((projection_gt_matches_all[cls_id], projection_cls_gt_match), axis=-1)
 
-    
-    
+
+
     # draw iou 3d AP vs. iou thresholds
     fig_iou = plt.figure()
     ax_iou = plt.subplot(111)
@@ -2154,9 +2154,9 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
         for s, iou_thres in enumerate(iou_thres_list):
             iou_3d_aps[cls_id, s] = compute_ap_from_matches_scores(iou_pred_matches_all[cls_id][s, :],
                                                                    iou_pred_scores_all[cls_id][s, :],
-                                                                   iou_gt_matches_all[cls_id][s, :])    
+                                                                   iou_gt_matches_all[cls_id][s, :])
         ax_iou.plot(iou_thres_list, iou_3d_aps[cls_id, :], label=class_name)
-        
+
     iou_3d_aps[-1, :] = np.mean(iou_3d_aps[1:-1, :], axis=0)
     ax_iou.plot(iou_thres_list, iou_3d_aps[-1, :], label='mean')
     ax_iou.legend()
@@ -2166,7 +2166,7 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
     iou_dict['aps'] = iou_3d_aps
     with open(iou_dict_pkl_path, 'wb') as f:
         cPickle.dump(iou_dict, f)
-    
+
 
     # draw pose AP vs. thresholds
     if use_matches_for_pose:
@@ -2197,15 +2197,15 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
     pose_dict = {}
     pose_dict['projection_thres_list'] = projection_thres_list
 
-    for i, projection_thres in enumerate(projection_thres_list):                
+    for i, projection_thres in enumerate(projection_thres_list):
         for cls_id in range(1, num_classes):
-            projection_2d_aps[cls_id, i] = compute_ap_from_matches_scores(projection_pred_matches_all[cls_id][i, :], 
-                                                                             projection_pred_scores_all[cls_id][i, :], 
+            projection_2d_aps[cls_id, i] = compute_ap_from_matches_scores(projection_pred_matches_all[cls_id][i, :],
+                                                                             projection_pred_scores_all[cls_id][i, :],
                                                                              projection_gt_matches_all[cls_id][i, :])
 
 
         projection_2d_aps[-1, i] = np.mean(projection_2d_aps[1:-1, i])
-    
+
     pose_dict['aps'] = projection_2d_aps
     with open(projection_dict_pkl_path, 'wb') as f:
         cPickle.dump(pose_dict, f)
@@ -2213,7 +2213,7 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
     plot_data_dir = 'data/linemod/plots'
     f, axarr = plt.subplots(2, 4, figsize=(20, 8), dpi=50)
     for i, cls_id in enumerate([1, 3, 4, 5, 6, 7, 8, 9]):
-        
+
         class_name = synset_names[cls_id]
 
         axarr[i].set_title(class_name)
@@ -2244,7 +2244,7 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
     for ax in axarr.flat:
         ax.label_outer()
         ax.set(ylim=(0, 101))
-        ax.grid(True)       
+        ax.grid(True)
 
 
     print(output_dir)
@@ -2257,13 +2257,13 @@ def compute_2D_projection_mAP(final_results, synset_names, log_dir, meshes, intr
     plt.ylim((0, 1.02))
     plt.xlim((projection_thres_list[0], projection_thres_list[-1]))
     plt.xlabel('Reprojection error thresholds/pixel')
-    
+
     for cls_id in range(1, num_classes):
         class_name = synset_names[cls_id]
         print(class_name)
         ax_pose.plot(projection_thres_list, projection_2d_aps[cls_id, :], label=class_name)
     ax_pose.plot(projection_thres_list, projection_2d_aps[-1, :], label='mean')
-    
+
     output_path = os.path.join(log_dir, prefix+'Projection_2D_AP_{}-{}pixel.png'.format(projection_thres_list[0], projection_thres_list[-1]))
     fig_pose.legend()
     fig_pose.savefig(output_path)
@@ -2290,18 +2290,18 @@ def compute_coords_aps(final_results, synset_names, iou_thresholds, coord_thresh
     recalls: List of recall values at different class score thresholds.
     overlaps: [pred_boxes, gt_boxes] IoU overlaps.
     """
-    
+
     num_classes = len(synset_names)
     num_iou_thres = len(iou_thresholds)
     num_coord_thres = len(coord_thresholds)
-    
+
     mean_coord_dist_cls = {}
-    
+
 #     pred_matches_all = {}
 #     pred_scores_all = {}
 #     gt_matches_all = {}
 
-    
+
     for cls_id in range(1, num_classes):
         mean_coord_dist_cls[cls_id] = []
 #         pred_matches_all[cls_id] = [[[] for _ in range(num_shift_thres)] for _ in range(num_degree_thres)]
@@ -2311,30 +2311,30 @@ def compute_coords_aps(final_results, synset_names, iou_thresholds, coord_thresh
     progress = 0
     for progress, result in enumerate(final_results):
         print(progress, len(final_results))
-        
+
         gt_class_ids = result['gt_class_ids'].astype(np.int32)
         gt_bboxes = np.array(result['gt_bboxes'])
         gt_masks = np.array(result['gt_masks'])
         gt_coords = np.array(result['gt_coords'])
-        
+
         #print(gt_class_ids.shape, gt_bboxes.shape, gt_masks.shape, gt_coords.shape)
         #gt_scales = result['gt_scale']
-        
+
         pred_class_ids = result['pred_class_ids'].astype(np.int32)
         pred_bboxes = np.array(result['pred_bboxes'])
         pred_masks = np.array(result['pred_masks'])
         pred_coords = np.array(result['pred_coords'])
         pred_scores = result['pred_scores']
         #print(pred_class_ids.shape, pred_bboxes.shape, pred_masks.shape, pred_coords.shape)
-        
 
-        
-        
+
+
+
         for cls_id in range(1, num_classes):
             # get gt and predictions in this class
             if(len(gt_class_ids)):
-                cls_gt_class_ids = gt_class_ids[gt_class_ids==cls_id] 
-                cls_gt_bboxes = gt_bboxes[gt_class_ids==cls_id] 
+                cls_gt_class_ids = gt_class_ids[gt_class_ids==cls_id]
+                cls_gt_bboxes = gt_bboxes[gt_class_ids==cls_id]
                 cls_gt_masks = gt_masks[..., gt_class_ids==cls_id]
                 cls_gt_coords = gt_coords[..., gt_class_ids==cls_id, :]
             else:
@@ -2344,8 +2344,8 @@ def compute_coords_aps(final_results, synset_names, iou_thresholds, coord_thresh
                 cls_gt_coords = []
 
             if(len(pred_class_ids)):
-                cls_pred_class_ids = pred_class_ids[pred_class_ids==cls_id] 
-                cls_pred_bboxes =  pred_bboxes[pred_class_ids==cls_id] 
+                cls_pred_class_ids = pred_class_ids[pred_class_ids==cls_id]
+                cls_pred_bboxes =  pred_bboxes[pred_class_ids==cls_id]
                 cls_pred_scores = pred_scores[pred_class_ids==cls_id]
                 cls_pred_masks = pred_masks[:, :, pred_class_ids==cls_id]
                 cls_pred_coords = pred_coords[:, :, pred_class_ids==cls_id, :]
@@ -2355,24 +2355,24 @@ def compute_coords_aps(final_results, synset_names, iou_thresholds, coord_thresh
                 cls_pred_scores = []
                 cls_pred_masks = []
                 cls_pred_coords = []
-            
+
             # calculate the overlap between each gt instance and pred instance
-            
+
             gt_match, pred_match, overlaps, pred_indices = compute_matches(cls_gt_bboxes, cls_gt_class_ids, cls_gt_masks,
-                                                             cls_pred_bboxes, cls_pred_class_ids, cls_pred_scores, 
+                                                             cls_pred_bboxes, cls_pred_class_ids, cls_pred_scores,
                                                              cls_pred_masks, 0.5)
-            
+
             if len(gt_match) and len(pred_match):
-            
+
                 cls_pred_masks_sorted = cls_pred_masks[..., pred_indices]
                 cls_pred_coords_sorted = cls_pred_coords[..., pred_indices, :]
 
                 for i in range(len(pred_match)):
                     if pred_match[i] > -1:
                         j = int(pred_match[i])
-                        mean_coord_dist = compute_mean_l1_coord_diff(cls_pred_masks_sorted[..., i], 
+                        mean_coord_dist = compute_mean_l1_coord_diff(cls_pred_masks_sorted[..., i],
                                                                      cls_gt_masks[..., j],
-                                                                     cls_pred_coords_sorted[..., i, :], 
+                                                                     cls_pred_coords_sorted[..., i, :],
                                                                      cls_gt_coords[..., j, :],
                                                                      synset_names,
                                                                      cls_id)
@@ -2381,18 +2381,18 @@ def compute_coords_aps(final_results, synset_names, iou_thresholds, coord_thresh
                         mean_coord_dist_cls[cls_id].append(mean_coord_dist)
                             #print(mean_coord_dist_cls[cls_id])
 
-            
+
 
     for cls_id in range(1, num_classes):
         mean_coord_dist_cls[cls_id] = np.array(mean_coord_dist_cls[cls_id])
         print('mean coord dist of {} class: {}'.format(synset_names[cls_id], np.mean(mean_coord_dist_cls[cls_id])))
 
 
-def compute_3d_matches_degree_cm(gt_class_ids, gt_RTs, gt_scales, 
-                                 pred_boxes, pred_class_ids, pred_scores, pred_RTs, 
+def compute_3d_matches_degree_cm(gt_class_ids, gt_RTs, gt_scales,
+                                 pred_boxes, pred_class_ids, pred_scores, pred_RTs,
                                  synset_names,
-                                 thres_shift = 5, 
-                                 thres_degree=5, 
+                                 thres_shift = 5,
+                                 thres_degree=5,
                                  bound_threshold=5):
     """Finds matches between prediction and ground truth instances.
     Returns:
@@ -2426,11 +2426,11 @@ def compute_3d_matches_degree_cm(gt_class_ids, gt_RTs, gt_scales,
 
     for i in range(num_pred):
         for j in range(num_gt):
-            overlaps[i, j] = compute_RT_upper_bound_symmetry(pred_RTs[i], 
-                                                             gt_RTs[j], 
-                                                             gt_class_ids[j], 
+            overlaps[i, j] = compute_RT_upper_bound_symmetry(pred_RTs[i],
+                                                             gt_RTs[j],
+                                                             gt_class_ids[j],
                                                              synset_names,
-                                                             thres_shift=thres_shift, 
+                                                             thres_shift=thres_shift,
                                                              thres_theta=thres_degree)
 
     # Loop through predictions and find matching ground truth boxes
@@ -2618,16 +2618,16 @@ def load_mesh(mesh_path, is_save=False, is_normalized=False, is_flipped=False):
     vertices = np.array(vertices, dtype=np.float64)
     # flip mesh to unity rendering
     if is_flipped:
-        vertices[:, 2] = -vertices[:, 2] 
+        vertices[:, 2] = -vertices[:, 2]
     faces = np.array(faces, dtype=np.int32)
-    
+
     if is_normalized:
         maxs = np.amax(vertices, axis=0)
         mins = np.amin(vertices, axis=0)
         diffs = maxs - mins
         assert diffs.shape[0] == 3
         vertices = vertices/np.linalg.norm(diffs)
-    
+
     if is_save:
         np.savetxt(mesh_path.replace('.obj', '_vertices.txt'), X = vertices)
 
@@ -2649,7 +2649,7 @@ def draw(img, imgpts, axes, color):
     for i, j in zip(range(4),range(4,8)):
         img = cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]), color_pillar, 3)
 
-    
+
     # finally, draw top layer in color
     for i, j in zip([0, 1, 2, 3],[1, 3, 0, 2]):
         img = cv2.line(img, tuple(imgpts[i]), tuple(imgpts[j]), color, 3)
@@ -2746,31 +2746,31 @@ def draw_text(draw_image, bbox, text, draw_box=False):
     fontFace = cv2.FONT_HERSHEY_TRIPLEX
     fontScale = 1
     thickness = 1
-    
+
 
     retval, baseline = cv2.getTextSize(text, fontFace, fontScale, thickness)
-    
+
     bbox_margin = 10
     text_margin = 10
-    
-    text_box_pos_tl = (min(bbox[1] + bbox_margin, 635 - retval[0] - 2* text_margin) , min(bbox[2] + bbox_margin, 475 - retval[1] - 2* text_margin)) 
+
+    text_box_pos_tl = (min(bbox[1] + bbox_margin, 635 - retval[0] - 2* text_margin) , min(bbox[2] + bbox_margin, 475 - retval[1] - 2* text_margin))
     text_box_pos_br = (text_box_pos_tl[0] + retval[0] + 2* text_margin,  text_box_pos_tl[1] + retval[1] + 2* text_margin)
 
     # text_pose is the bottom-left corner of the text
     text_pos = (text_box_pos_tl[0] + text_margin, text_box_pos_br[1] - text_margin - 3)
-    
+
     if draw_box:
-        cv2.rectangle(draw_image, 
+        cv2.rectangle(draw_image,
                       (bbox[1], bbox[0]),
                       (bbox[3], bbox[2]),
                       (255, 0, 0), 2)
 
-    cv2.rectangle(draw_image, 
+    cv2.rectangle(draw_image,
                   text_box_pos_tl,
                   text_box_pos_br,
                   (255,0,0), -1)
-    
-    cv2.rectangle(draw_image, 
+
+    cv2.rectangle(draw_image,
                   text_box_pos_tl,
                   text_box_pos_br,
                   (0,0,0), 1)
@@ -2799,28 +2799,28 @@ def draw_detections(image, save_dir, data_name, image_id, intrinsics, synset_nam
             #mask = np.repeat(mask, 3, axis=-1)
             cind, rind = np.where(mask == 1)
             coord_data = gt_coord[:, :, i, :].copy()
-            coord_data[:, :, 2] = 1 - coord_data[:, :, 2] # undo the z axis flipping to match original data        
+            coord_data[:, :, 2] = 1 - coord_data[:, :, 2] # undo the z axis flipping to match original data
             draw_image[cind, rind] = coord_data[cind, rind] * 255
-            
+
         if draw_tag:
             for i in range(num_gt_instances):
                 overlay = draw_image.copy()
                 overlay = draw_text(overlay, gt_bbox[i], synset_names[gt_class_ids[i]], draw_box=True)
                 cv2.addWeighted(overlay, alpha, draw_image, 1 - alpha, 0, draw_image)
-            
+
         # #if draw_tag:
         # for i in range(num_gt_instances):
         #     print('a', synset_names[gt_class_ids[i]])
         #     if synset_names[gt_class_ids[i]] == 'camera':
         #         overlay = draw_image.copy()
-        #         cv2.rectangle(overlay, 
+        #         cv2.rectangle(overlay,
         #               (gt_bbox[i][1], gt_bbox[i][0]),
         #               (gt_bbox[i][3], gt_bbox[i][2]),
         #               (255, 0, 0), 2)
 
         #         cv2.addWeighted(overlay, alpha, draw_image, 1 - alpha, 0, draw_image)
 
-        
+
         cv2.imwrite(output_path, draw_image[:, :, ::-1])
 
         output_path = os.path.join(save_dir, '{}_{}_bbox_gt.png'.format(data_name, image_id))
@@ -2857,10 +2857,10 @@ def draw_detections(image, save_dir, data_name, image_id, intrinsics, synset_nam
             g_image = image.copy()
             b_image = image.copy()
 
-        
-        num_pred_instances = len(pred_class_ids)    
+
+        num_pred_instances = len(pred_class_ids)
         for i in range(num_pred_instances):
-            
+
             mask = pred_mask[:, :, i]
             #mask = mask[:, :, np.newaxis]
             #mask = np.repeat(mask, 3, axis=-1)
@@ -2894,8 +2894,8 @@ def draw_detections(image, save_dir, data_name, image_id, intrinsics, synset_nam
             cv2.imwrite(output_path_r, r_image[:, :, ::-1])
             cv2.imwrite(output_path_g, g_image[:, :, ::-1])
             cv2.imwrite(output_path_b, b_image[:, :, ::-1])
-                        
-        
+
+
         output_path = os.path.join(save_dir, '{}_{}_bbox_pred.png'.format(data_name, image_id))
         draw_image_bbox = image.copy()
 
@@ -2906,19 +2906,19 @@ def draw_detections(image, save_dir, data_name, image_id, intrinsics, synset_nam
 
             if len(pred_indices):
                 pred_class_ids = pred_class_ids[pred_indices]
-                pred_scores = pred_scores[pred_indices]        
+                pred_scores = pred_scores[pred_indices]
                 pred_RTs = pred_RTs[pred_indices]
 
-        
+
         for ind in range(num_pred_instances):
             RT = pred_RTs[ind]
             cls_id = pred_class_ids[ind]
-            
+
             if gt_class_ids is not None:## if gt exists, skip instances that fail to match
                 gt_ind = int(pred_match[ind])
                 if gt_ind == -1:
                     continue
-            
+
             xyz_axis = 0.3*np.array([[0, 0, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0]]).transpose()
             transformed_axes = transform_coordinates_3d(xyz_axis, RT)
             projected_axes = calculate_2d_projections(transformed_axes, intrinsics)
@@ -2940,7 +2940,7 @@ def draw_detections(image, save_dir, data_name, image_id, intrinsics, synset_nam
                     RT = pred_RTs[ind]
                     gt_RT = gt_RTs[gt_ind]
                     cls_id = pred_class_ids[ind]
-                    
+
                     degree, cm = compute_RT_degree_cm_symmetry(RT, gt_RT, cls_id, gt_handle_visibility, synset_names)
                     text = '{}({:.1f}, {:.1f})'.format(synset_names[cls_id], degree, cm)
                     overlay = draw_text(overlay, pred_bbox[ind], text)
@@ -2953,13 +2953,13 @@ def draw_detections(image, save_dir, data_name, image_id, intrinsics, synset_nam
 
 
 def draw_coco_detections(image, save_dir, data_name, image_id, synset_names, draw_rgb_coord,
-                        gt_bbox, gt_class_ids, gt_mask, 
+                        gt_bbox, gt_class_ids, gt_mask,
                         pred_bbox, pred_class_ids, pred_mask, pred_coord, pred_scores):
 
     output_path = os.path.join(save_dir, '{}_{:04d}_image.png'.format(data_name, image_id))
     cv2.imwrite(output_path, image[:, :, ::-1])
 
-    
+
     output_path = os.path.join(save_dir, '{}_{:04d}_mask_gt.png'.format(data_name, image_id))
     draw_image = image.copy()
     for i in range(len(gt_class_ids)):
@@ -2983,9 +2983,9 @@ def draw_coco_detections(image, save_dir, data_name, image_id, synset_names, dra
         r_image = image.copy()
         g_image = image.copy()
         b_image = image.copy()
-    
+
     for i in range(len(pred_class_ids)):
-        
+
         mask = pred_mask[:, :, i]
         #mask = mask[:, :, np.newaxis]
         #mask = np.repeat(mask, 3, axis=-1)
@@ -3010,9 +3010,9 @@ def draw_coco_detections(image, save_dir, data_name, image_id, synset_names, dra
         cv2.imwrite(output_path_r, r_image[:, :, ::-1])
         cv2.imwrite(output_path_g, g_image[:, :, ::-1])
         cv2.imwrite(output_path_b, b_image[:, :, ::-1])
-                    
-    
-    
+
+
+
 
 def backproject(depth, intrinsics, instance_mask):
     intrinsics_inv = np.linalg.inv(intrinsics)
@@ -3026,7 +3026,7 @@ def backproject(depth, intrinsics, instance_mask):
     #non_zero_mask = np.logical_and(depth > 0, depth < 5000)
     non_zero_mask = (depth > 0)
     final_instance_mask = np.logical_and(instance_mask, non_zero_mask)
-    
+
     idxs = np.where(final_instance_mask)
     grid = np.array([idxs[1], idxs[0]])
 
@@ -3059,7 +3059,7 @@ def align(class_ids, masks, coords, depth, intrinsics, synset_names, image_path,
 
     RTs = np.zeros((num_instances, 4, 4))
     bbox_scales = np.ones((num_instances, 3))
-    
+
     for i in range(num_instances):
         #class_name = synset_names[class_ids[i]]
         class_id = class_ids[i]
@@ -3076,20 +3076,20 @@ def align(class_ids, masks, coords, depth, intrinsics, synset_names, image_path,
             bbox_scales[i, :] /= scale
             coord_pts /= scale
 
-        
+
         try:
             start = time.time()
-            
+
             scales, rotation, translation, outtransform = estimateSimilarityTransform(coord_pts, pts, False)
 
-            aligned_RT = np.zeros((4, 4), dtype=np.float32) 
+            aligned_RT = np.zeros((4, 4), dtype=np.float32)
             if with_scale:
                 aligned_RT[:3, :3] = np.diag(scales) / 1000 @ rotation.transpose()
             else:
                 aligned_RT[:3, :3] = rotation.transpose()
             aligned_RT[:3, 3] = translation / 1000
             aligned_RT[3, 3] = 1
-            
+
             if save_path is not None:
                 coord_pts_rotated = aligned_RT[:3, :3] @ coord_pts.transpose() + aligned_RT[:3, 3:]
                 coord_pts_rotated = coord_pts_rotated.transpose()
@@ -3106,13 +3106,13 @@ def align(class_ids, masks, coords, depth, intrinsics, synset_names, image_path,
             elapsed = time.time() - start
             print('elapsed: ', elapsed)
             elapses.append(elapsed)
-        
+
 
         except Exception as e:
             message = '[ Error ] aligning instance {} in {} fails. Message: {}.'.format(synset_names[class_id], image_path, str(e))
             print(message)
             error_messages += message + '\n'
-            aligned_RT = np.identity(4, dtype=np.float32) 
+            aligned_RT = np.identity(4, dtype=np.float32)
 
         # print('Estimation takes {:03f}s.'.format(time.time() - start))
         # from camera world to computer vision frame
@@ -3120,7 +3120,7 @@ def align(class_ids, masks, coords, depth, intrinsics, synset_names, image_path,
         z_180_RT[:3, :3] = np.diag([-1, -1, 1])
         z_180_RT[3, 3] = 1
 
-        RTs[i, :, :] = z_180_RT @ aligned_RT 
+        RTs[i, :, :] = z_180_RT @ aligned_RT
 
     return RTs, bbox_scales, error_messages, elapses
 
@@ -3159,7 +3159,7 @@ def align_ICP(class_ids, masks, depth, intrinsics, synset_names, image_path, sav
         #     scale = np.linalg.norm(bbox_scales[i, :])
         #     bbox_scales[i, :] /= scale
         #     coord_pts /= scale
-        
+
         glob_paths = '/home/hewang/Projects/CoordRCNN/data/pts/real_test/{}*.txt'.format(synset_names[class_ids[i]])
         print(glob_paths)
         shape_paths = glob.glob(glob_paths)
@@ -3170,7 +3170,7 @@ def align_ICP(class_ids, masks, depth, intrinsics, synset_names, image_path, sav
         shape_pts = np.loadtxt(shape_paths[0])
         print(shape_pts.shape)
         bbox_scales[i, :] = np.array([1, 1, 1])
-        
+
 
 
         # depth_pts = rotation_y_matrix(0.01)@shape_pts.transpose() + 0.01
@@ -3179,17 +3179,17 @@ def align_ICP(class_ids, masks, depth, intrinsics, synset_names, image_path, sav
         #try:
         if True:
             scales, rotation, translation = ICP.doICP(shape_pts,
-                                                      depth_pts, 
+                                                      depth_pts,
                                                       threshold=5, isViz=False)
 
-            scales = np.amax(shape_pts, axis=0) - np.amin(shape_pts, axis=0) 
+            scales = np.amax(shape_pts, axis=0) - np.amin(shape_pts, axis=0)
             # scales, rotation, translation, outtransform = estimateSimilarityTransform(coord_pts, pts, False)
             #scales = np.diag(bbox_scales[i, :])
-            aligned_RT = np.zeros((4, 4), dtype=np.float32) 
+            aligned_RT = np.zeros((4, 4), dtype=np.float32)
             aligned_RT[:3, :3] = np.diag(scales)@rotation#.transpose()
             aligned_RT[:3, 3] = translation / 1000
             aligned_RT[3, 3] = 1
-            
+
             #bbox_scales[i, :] = scales@bbox_scales[i, :]/1000
 
             if save_path is not None:
@@ -3204,13 +3204,13 @@ def align_ICP(class_ids, masks, depth, intrinsics, synset_names, image_path, sav
                 print('Scale: ', scales)
                 print('Rotation: ', rotation)
                 print('Translation: ', translation)
-        
+
 
         # except Exception as e:
         #     message = '[ Error ] aligning instance {} in {} fails. Message: {}.'.format(synset_names[class_id], image_path, str(e))
         #     print(message)
         #     error_messages += message + '\n'
-        #     aligned_RT = np.identity(4, dtype=np.float32) 
+        #     aligned_RT = np.identity(4, dtype=np.float32)
 
         # print('Estimation takes {:03f}s.'.format(time.time() - start))
         # from camera world to computer vision frame
@@ -3218,6 +3218,6 @@ def align_ICP(class_ids, masks, depth, intrinsics, synset_names, image_path, sav
         z_180_RT[:3, :3] = np.diag([-1, -1, 1])
         z_180_RT[3, 3] = 1
 
-        RTs[i, :, :] = z_180_RT @ aligned_RT 
+        RTs[i, :, :] = z_180_RT @ aligned_RT
 
     return RTs, bbox_scales, error_messages
